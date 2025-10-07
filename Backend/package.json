@@ -1,17 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --files src/index.ts",
-    "build": "tsc && cp /package.json ./dist",
+    "dev": "ts-node-dev --respawn --transpile-only --files src/index.ts",
+    "build": "tsc && node -e \"require('fs').copyFileSync('package.json','dist/package.json')\"",
     "start": "node dist/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-session": "^2.1.1",
@@ -31,7 +26,6 @@
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.3",
-    "@types/mongoose": "^5.11.96",
     "@types/node": "^24.6.2",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
