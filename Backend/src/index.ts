@@ -1,7 +1,10 @@
 import "dotenv/config";
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import session from "cookie-session";
+// import session from "cookie-session";
+import session from "express-session";
+import MongoStore from "connect-mongo";
+
 import { config } from "./config/app.config";
 import connectDatabase from "./config/database.config";
 import { errorHandler } from "./middlewares/errorHandler.middleware";
@@ -17,18 +20,32 @@ import authRoutes from "./routes/auth.routes";
 const app = express();
 const BASE_PATH = config.BASE_PATH;
 
+// If your app is behind a proxy (nginx, cloud provider), set trust proxy:
+if (config.NODE_ENV === "production") {
+  app.set("trust proxy", 1); // trust first proxy
+}
+
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-    name: "session",
-    keys: [config.SESSION_SECRET],
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    secure: config.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax",
+    name: "sessionId",
+    secret: config.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI || "mongodb://localhost:27017/B2B_PMS_db",
+      collectionName: "sessions",
+      // optional: ttl
+    }),
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: config.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
+    },
   })
 );
 
@@ -52,8 +69,10 @@ app.get(
     return res.status(HTTPSTATUS.OK).json({ message: "Api is running..." });
   })
 );
-app.use(`${BASE_PATH}/auth`, authRoutes);
 
+// Routes
+app.get("/" /* ... */);
+app.use(`${BASE_PATH}/auth`, authRoutes);
 app.use(errorHandler);
 
 app.listen(config.PORT, async () => {
