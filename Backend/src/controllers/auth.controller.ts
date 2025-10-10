@@ -65,7 +65,7 @@ export const loginController = asyncHandler(
           });
         });
       }
-    )(res, res, next);
+    )(req, res, next);
   }
 );
 
