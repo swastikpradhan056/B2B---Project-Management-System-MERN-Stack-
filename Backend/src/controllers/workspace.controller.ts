@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/asyncHandler.middleware";
 import {
+  changeRoleSchema,
   createWorkspaceSchema,
   workspaceIdSchema,
 } from "../validation/workspace.validation";
 import { HTTPSTATUS } from "../config/http.config";
 import {
+  changeMemberRoleService,
   createWorkspaceService,
   getAllWorkspaceUserIsMemberService,
   getWorkspaceAnalyticsService,
@@ -102,6 +104,31 @@ export const getWorkspaceAnalyticsController = asyncHandler(
     return res.status(HTTPSTATUS.OK).json({
       message: "Workspace members retrieved successfully",
       analytics,
+    });
+  }
+);
+
+/* The `changeWorkspaceMemberRoleController` function is an asynchronous controller function that
+handles changing the role of a member within a specific workspace. Here's a breakdown of what it
+does: */
+export const changeWorkspaceMemberRoleController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const workspaceId = workspaceIdSchema.parse(req.params.id);
+    const { memberId, roleId } = changeRoleSchema.parse(req.body);
+    const userId = req.user?._id;
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+    roleGuard(role, [Permissions.CHANGE_MEMBER_ROLE]);
+
+    const { member } = await changeMemberRoleService(
+      workspaceId,
+      memberId,
+      roleId
+    );
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Member role changed successfully",
+      member,
     });
   }
 );
