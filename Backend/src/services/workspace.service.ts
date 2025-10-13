@@ -5,6 +5,8 @@ import RoleModel from "../models/roles-permission.model";
 import UserModel from "../models/user.model";
 import WorkspaceModel from "../models/workspace.model";
 import { NotFoundException } from "../utils/appError";
+import TaskModel from "../models/task.model";
+import { TaskStatusEnum } from "../enums/task.enum";
 
 /**
  * The function `createWorkspaceService` creates a new workspace for a user with the specified name and
@@ -126,6 +128,17 @@ export const getWorkspaceByIdService = async (workspaceId: string) => {
 
 /* GET ALL MEMBERS IN WORKSPACE */
 
+/**
+ * The function `getWorkspaceMembersService` fetches all members of a workspace along with their roles.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of a workspace. This identifier is used to fetch all the members associated with that
+ * particular workspace.
+ * @returns The `getWorkspaceMembersService` function returns an object with two properties: `members`
+ * and `roles`. The `members` property contains an array of workspace members fetched from the
+ * database, with additional information such as user name, email, profile picture (excluding
+ * password), and role. The `roles` property contains an array of roles fetched from the database, with
+ * only the `name` and `_
+ */
 export const getWorkspaceMembersService = async (workspaceId: string) => {
   // Fetch all members of the workspace
 
@@ -140,4 +153,41 @@ export const getWorkspaceMembersService = async (workspaceId: string) => {
     .lean();
 
   return { members, roles };
+};
+
+/**
+ * The function `getWorkspaceAnalyticsService` retrieves analytics data for a workspace including total
+ * tasks, overdue tasks, and completed tasks.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace for which you want to retrieve analytics data.
+ * @returns The `getWorkspaceAnalyticsService` function returns an object containing analytics data for
+ * a specific workspace. The object includes the total number of tasks in the workspace, the number of
+ * overdue tasks (tasks with due dates before the current date and not marked as done), and the number
+ * of completed tasks in the workspace.
+ */
+export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
+  const currentDate = new Date();
+
+  const totalTasks = await TaskModel.countDocuments({
+    workspace: workspaceId,
+  });
+
+  const overdueTask = await TaskModel.countDocuments({
+    workspace: workspaceId,
+    dueDate: { $lt: currentDate },
+    status: { $ne: TaskStatusEnum.DONE },
+  });
+
+  const completedTasks = await TaskModel.countDocuments({
+    workspace: workspaceId,
+    status: TaskStatusEnum.DONE,
+  });
+
+  const analytics = {
+    totalTasks,
+    overdueTask,
+    completedTasks,
+  };
+
+  return { analytics };
 };

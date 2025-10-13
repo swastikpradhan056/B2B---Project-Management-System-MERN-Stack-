@@ -4,6 +4,7 @@ import { Router } from "express";
 import {
   createWorkspaceController,
   getAllWorkspaceUserIsMemberController,
+  getWorkspaceAnalyticsController,
   getWorkspaceByIdController,
   getWorkspaceMembersController,
 } from "../controllers/workspace.controller";

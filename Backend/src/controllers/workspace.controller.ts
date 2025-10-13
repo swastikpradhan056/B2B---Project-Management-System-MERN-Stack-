@@ -8,6 +8,7 @@ import { HTTPSTATUS } from "../config/http.config";
 import {
   createWorkspaceService,
   getAllWorkspaceUserIsMemberService,
+  getWorkspaceAnalyticsService,
   getWorkspaceByIdService,
   getWorkspaceMembersService,
 } from "../services/workspace.service";
@@ -86,9 +87,21 @@ export const getWorkspaceMembersController = asyncHandler(
   }
 );
 
+/* The `getWorkspaceAnalyticsController` function is an asynchronous controller function that handles
+retrieving analytics data for a specific workspace. Here's a breakdown of what it does: */
 export const getWorkspaceAnalyticsController = asyncHandler(
   async (req: Request, res: Response) => {
     const workspaceId = workspaceIdSchema.parse(req.params.id);
     const userId = req.user?._id;
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+    roleGuard(role, [Permissions.VIEW_ONLY]);
+
+    const { analytics } = await getWorkspaceAnalyticsService(workspaceId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Workspace members retrieved successfully",
+      analytics,
+    });
   }
 );
