@@ -5,6 +5,7 @@ import {
   createWorkspaceController,
   getAllWorkspaceUserIsMemberController,
   getWorkspaceByIdController,
+  getWorkspaceMembersController,
 } from "../controllers/workspace.controller";
 
 const workspaceRoutes = Router();
@@ -12,6 +13,10 @@ const workspaceRoutes = Router();
 workspaceRoutes.post("/create/new", createWorkspaceController);
 
 workspaceRoutes.get("/all", getAllWorkspaceUserIsMemberController);
+
+workspaceRoutes.get("/members/:id", getWorkspaceMembersController);
+
+workspaceRoutes.get("/analytics/:id", getWorkspaceAnalyticsController);
 
 workspaceRoutes.get("/:id", getWorkspaceByIdController);
 

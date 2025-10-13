@@ -9,8 +9,11 @@ import {
   createWorkspaceService,
   getAllWorkspaceUserIsMemberService,
   getWorkspaceByIdService,
+  getWorkspaceMembersService,
 } from "../services/workspace.service";
 import { getMemberRoleInWorkspace } from "../services/member.service";
+import { Permissions } from "../enums/role.enum";
+import { roleGuard } from "../utils/roleGuard";
 
 /* The `createWorkspaceController` function is an asynchronous controller function that handles the
 creation of a workspace. Here's a breakdown of what it does: */
@@ -52,5 +55,40 @@ export const getWorkspaceByIdController = asyncHandler(
 
     await getMemberRoleInWorkspace(userId, workspaceId);
     const { workspace } = await getWorkspaceByIdService(workspaceId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Workspace fetched successfully",
+      workspace,
+    });
+  }
+);
+
+/* The `getWorkspaceMembersController` function is an asynchronous controller function that handles
+retrieving the members and their roles within a specific workspace. Here's a breakdown of what it
+does: */
+
+export const getWorkspaceMembersController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const workspaceId = workspaceIdSchema.parse(req.params.id);
+    const userId = req.user?._id;
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+
+    roleGuard(role, [Permissions.VIEW_ONLY]);
+
+    const { members, roles } = await getWorkspaceMembersService(workspaceId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Workspace members retrieved successfully",
+      members,
+      roles,
+    });
+  }
+);
+
+export const getWorkspaceAnalyticsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const workspaceId = workspaceIdSchema.parse(req.params.id);
+    const userId = req.user?._id;
   }
 );
