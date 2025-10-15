@@ -11,6 +11,7 @@ import { Permissions } from "../enums/role.enum";
 import {
   createProjectService,
   getAllProjectInWorkspaceService,
+  getProjectAnalyticsService,
   getProjectByIdAndWorkspaceIdService,
 } from "../services/project.service";
 import { HTTPSTATUS } from "../config/http.config";
@@ -70,6 +71,9 @@ export const getAllProjectsInWorkspaceController = asyncHandler(
   }
 );
 
+/* This code snippet defines a controller function named `getProjectByIdAndWorkspaceIdController` that
+handles the retrieval of a specific project within a workspace. Here's a breakdown of what the
+function is doing: */
 export const getProjectByIdAndWorkspaceIdController = asyncHandler(
   async (req: Request, res: Response) => {
     const projectId = projectIdSchema.parse(req.params.id);
@@ -89,6 +93,32 @@ export const getProjectByIdAndWorkspaceIdController = asyncHandler(
     return res.status(HTTPSTATUS.OK).json({
       message: "Project fetched successfully",
       project,
+    });
+  }
+);
+
+/* The `getProjectAnalyticsController` function is a controller function that handles the retrieval of
+analytics data for a specific project within a workspace. Here's a breakdown of what the function is
+doing: */
+export const getProjectAnalyticsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const projectId = projectIdSchema.parse(req.params.id);
+    const workspaceId = workspaceIdSchema.parse(req.params.workspaceId);
+
+    const userId = req.user?._id;
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+
+    roleGuard(role, [Permissions.VIEW_ONLY]);
+
+    const { analytics } = await getProjectAnalyticsService(
+      workspaceId,
+      projectId
+    );
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Project analytics retrieved successfully",
+      analytics,
     });
   }
 );

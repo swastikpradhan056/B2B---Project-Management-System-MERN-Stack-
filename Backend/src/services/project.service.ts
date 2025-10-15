@@ -1,5 +1,9 @@
+import { notDeepEqual } from "assert";
 import ProjectModel from "../models/project.model";
 import { NotFoundException } from "../utils/appError";
+import TaskModel from "../models/task.model";
+import mongoose from "mongoose";
+import { TaskStatusEnum } from "../enums/task.enum";
 
 /**
  * The function `createProjectService` creates a new project associated with a user and workspace in a
@@ -79,6 +83,18 @@ export const getAllProjectInWorkspaceService = async (
   return { projects, totalCount, totalPages, skip };
 };
 
+/**
+ * This function retrieves a project by its ID and workspace ID, throwing an exception if the project
+ * is not found or does not belong to the specified workspace.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace to which the project belongs.
+ * @param {string} projectId - The `projectId` parameter is a string that represents the unique
+ * identifier of the project you want to retrieve.
+ * @returns The `getProjectByIdAndWorkspaceIdService` function returns an object containing the
+ * `project` found based on the provided `projectId` and `workspaceId`. The `project` object includes
+ * the `_id`, `emoji`, `name`, and `description` properties of the project. If the project is not found
+ * or does not belong to the specified workspace, a `NotFoundException` is thrown with an
+ */
 export const getProjectByIdAndWorkspaceIdService = async (
   workspaceId: string,
   projectId: string
@@ -94,4 +110,80 @@ export const getProjectByIdAndWorkspaceIdService = async (
     );
   }
   return { project };
+};
+
+/**
+ * This TypeScript function retrieves project analytics including total tasks, overdue tasks, and
+ * completed tasks using Mongoose aggregate.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace to which the project belongs.
+ * @param {string} projectId - The `projectId` parameter is the unique identifier of the project for
+ * which you want to retrieve analytics. It is used to query the database and fetch relevant
+ * information about tasks associated with that project.
+ * @returns The `getProjectAnalyticsService` function returns an object with a property `analytics`,
+ * which contains the following analytics data:
+ * - `totalTasks`: The total number of tasks in the project.
+ * - `overdueTasks`: The number of tasks in the project that are overdue (due date is before the
+ * current date and status is not 'DONE').
+ * - `completedTasks`: The number of tasks in the
+ */
+export const getProjectAnalyticsService = async (
+  workspaceId: string,
+  projectId: string
+) => {
+  const project = await ProjectModel.findById(projectId);
+
+  if (!project || project.workspace.toString() !== workspaceId.toString()) {
+    throw new NotFoundException(
+      "Project not found or does not belong to this workspace"
+    );
+  }
+
+  const currentDate = new Date();
+
+  //  USING MONGOOSE AGGREGATE
+  const taskAnalytics = await TaskModel.aggregate([
+    {
+      $match: {
+        project: new mongoose.Types.ObjectId(projectId),
+      },
+    },
+    {
+      $facet: {
+        totalTasks: [{ $count: "count" }],
+        overdueTasks: [
+          {
+            $match: {
+              dueDate: { $lt: currentDate },
+              status: {
+                $ne: TaskStatusEnum.DONE,
+              },
+            },
+          },
+          {
+            $count: "count",
+          },
+        ],
+        completedTasks: [
+          {
+            $match: {
+              status: TaskStatusEnum.DONE,
+            },
+          },
+          { $count: "count" },
+        ],
+      },
+    },
+  ]);
+
+  const _analytics = taskAnalytics[0];
+  const analytics = {
+    totalTasks: _analytics.totalTasks[0]?.count || 0,
+    overdueTasks: _analytics.overdueTasks[0]?.count || 0,
+    completedTasks: _analytics.completedTasks[0]?.count || 0,
+  };
+
+  return {
+    analytics,
+  };
 };
