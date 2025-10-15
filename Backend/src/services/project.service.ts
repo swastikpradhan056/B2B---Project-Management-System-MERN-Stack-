@@ -227,3 +227,35 @@ export const updateProjectService = async (
 
   return { project };
 };
+
+/**
+ * The function `deleteProjectService` deletes a project and its associated tasks based on the provided
+ * workspace and project IDs.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace to which the project belongs.
+ * @param {string} projectId - The `projectId` parameter represents the unique identifier of the
+ * project that you want to delete.
+ * @returns The `deleteProjectService` function is returning the deleted project after deleting it from
+ * the database.
+ */
+export const deleteProjectService = async (
+  workspaceId: string,
+  projectId: string
+) => {
+  const project = await ProjectModel.findOne({
+    _id: projectId,
+    workspace: workspaceId,
+  });
+
+  if (!project) {
+    throw new NotFoundException(
+      "Project not found or does not belong to the specified workspace"
+    );
+  }
+  await project.deleteOne();
+  await TaskModel.deleteMany({
+    project: project._id,
+  });
+
+  return project;
+};

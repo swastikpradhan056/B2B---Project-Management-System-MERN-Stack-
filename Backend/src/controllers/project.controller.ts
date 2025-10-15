@@ -11,6 +11,7 @@ import { roleGuard } from "../utils/roleGuard";
 import { Permissions } from "../enums/role.enum";
 import {
   createProjectService,
+  deleteProjectService,
   getAllProjectInWorkspaceService,
   getProjectAnalyticsService,
   getProjectByIdAndWorkspaceIdService,
@@ -148,6 +149,26 @@ export const updateProjectController = asyncHandler(
     return res.status(HTTPSTATUS.OK).json({
       message: "Project updated successfully",
       project,
+    });
+  }
+);
+
+/* The `deleteProjectController` function is a controller function that handles the deletion of a
+project within a specific workspace. Here's a breakdown of what the function is doing: */
+export const deleteProjectController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    const projectId = projectIdSchema.parse(req.params.id);
+    const workspaceId = workspaceIdSchema.parse(req.params.workspaceId);
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+    roleGuard(role, [Permissions.DELETE_PROJECT]);
+
+    await deleteProjectService(workspaceId, projectId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Project deleted successfully",
     });
   }
 );
