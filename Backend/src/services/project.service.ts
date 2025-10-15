@@ -187,3 +187,43 @@ export const getProjectAnalyticsService = async (
     analytics,
   };
 };
+
+/**
+ * The function `updateProjectService` updates a project's emoji, name, and description in a workspace.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace to which the project belongs.
+ * @param {string} projectId - The `projectId` parameter is a string that represents the unique
+ * identifier of the project that needs to be updated.
+ * @param body - The `updateProjectService` function takes in three parameters:
+ * @returns { project }
+ */
+export const updateProjectService = async (
+  workspaceId: string,
+  projectId: string,
+  body: {
+    emoji?: string | undefined;
+    name: string;
+    description?: string | undefined;
+  }
+) => {
+  const { name, emoji, description } = body;
+
+  const project = await ProjectModel.findOne({
+    _id: projectId,
+    workspace: workspaceId,
+  });
+
+  if (!project) {
+    throw new NotFoundException(
+      "Project not found or does not belong to the specified workspace"
+    );
+  }
+
+  if (emoji) project.emoji = emoji;
+  if (name) project.name = name;
+  if (description) project.description = description;
+
+  await project.save();
+
+  return { project };
+};
