@@ -10,6 +10,7 @@ import { HTTPSTATUS } from "../config/http.config";
 import {
   changeMemberRoleService,
   createWorkspaceService,
+  deleteWorkspaceService,
   getAllWorkspaceUserIsMemberService,
   getWorkspaceAnalyticsService,
   getWorkspaceByIdService,
@@ -135,6 +136,8 @@ export const changeWorkspaceMemberRoleController = asyncHandler(
   }
 );
 
+/* The `updateWorkspaceByIdController` function is an asynchronous controller function that handles
+updating a specific workspace by its ID. Here's a breakdown of what it does: */
 export const updateWorkspaceByIdController = asyncHandler(
   async (req: Request, res: Response) => {
     const workspaceId = workspaceIdSchema.parse(req.params.id);
@@ -154,6 +157,28 @@ export const updateWorkspaceByIdController = asyncHandler(
     return res.status(HTTPSTATUS.OK).json({
       message: "Workspace updated successfully",
       workspace,
+    });
+  }
+);
+
+/* The `deleteWorkspaceByIdController` function is an asynchronous controller function that handles the
+deletion of a specific workspace by its ID. Here's a breakdown of what it does: */
+export const deleteWorkspaceByIdController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const workspaceId = workspaceIdSchema.parse(req.params.id);
+    const userId = req.user?.id;
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+    roleGuard(role, [Permissions.DELETE_WORKSPACE]);
+
+    const { currentWorkspace } = await deleteWorkspaceService(
+      workspaceId,
+      userId
+    );
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Workspace delete successfully",
+      currentWorkspace,
     });
   }
 );

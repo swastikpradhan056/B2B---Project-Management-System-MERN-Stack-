@@ -4,9 +4,11 @@ import MemberModel from "../models/member.model";
 import RoleModel from "../models/roles-permission.model";
 import UserModel from "../models/user.model";
 import WorkspaceModel from "../models/workspace.model";
-import { NotFoundException } from "../utils/appError";
+import { BadRequestException, NotFoundException } from "../utils/appError";
 import TaskModel from "../models/task.model";
 import { TaskStatusEnum } from "../enums/task.enum";
+import ProjectModel from "../models/project.model";
+import { getMemberRoleInWorkspace } from "./member.service";
 
 /**
  * The function `createWorkspaceService` creates a new workspace for a user with the specified name and
@@ -192,6 +194,20 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
   return { analytics };
 };
 
+/**
+ * The function `changeMemberRoleService` changes the role of a member in a workspace based on the
+ * provided workspace ID, member ID, and role ID.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace where the member's role will be changed.
+ * @param {string} memberId - The `memberId` parameter in the `changeMemberRoleService` function
+ * represents the unique identifier of the member whose role is being changed within a specific
+ * workspace.
+ * @param {string} roleId - The `roleId` parameter in the `changeMemberRoleService` function represents
+ * the unique identifier of the role that you want to assign to a member in a workspace. This ID is
+ * used to retrieve the specific role from the database before assigning it to the member.
+ * @returns The `changeMemberRoleService` function returns an object with the updated `member` after
+ * changing their role.
+ */
 export const changeMemberRoleService = async (
   workspaceId: string,
   memberId: string,
@@ -226,6 +242,18 @@ export const changeMemberRoleService = async (
 
 /* UPDATE WORKSPACE */
 
+/**
+ * The function `updateWorkspaceByIdService` updates the name and description of a workspace identified
+ * by its ID.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace that needs to be updated.
+ * @param {string} name - The `name` parameter is a string that represents the new name for the
+ * workspace identified by `workspaceId`.
+ * @param {string} [description] - The `updateWorkspaceByIdService` function is used to update the
+ * details of a workspace in a database. It takes three parameters:
+ * @returns The `updateWorkspaceByIdService` function returns an object with the updated `workspace`
+ * details.
+ */
 export const updateWorkspaceByIdService = async (
   workspaceId: string,
   name: string,
@@ -245,4 +273,83 @@ export const updateWorkspaceByIdService = async (
   return {
     workspace,
   };
+};
+
+/**
+ * The function `deleteWorkspaceService` deletes a workspace along with its associated projects, tasks,
+ * and members, and updates the user's current workspace if necessary.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace that is being deleted.
+ * @param {string} userId - The `userId` parameter in the `deleteWorkspaceService` function represents
+ * the unique identifier of the user who is attempting to delete a workspace. This parameter is used to
+ * verify if the user has the necessary authorization to delete the workspace, as well as to update the
+ * user's current workspace if it matches the
+ * @returns The `deleteWorkspaceService` function returns an object with the `currentWorkspace`
+ * property, which contains the updated current workspace of the user after deleting the specified
+ * workspace.
+ */
+export const deleteWorkspaceService = async (
+  workspaceId: string,
+  userId: string
+) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const workspace = await WorkspaceModel.findById(workspaceId).session(
+      session
+    );
+    if (!workspace) {
+      throw new NotFoundException("Workspace not found");
+    }
+
+    // Check if the user owns the workspace
+    if (workspace.owner.toString() !== userId) {
+      throw new BadRequestException(
+        "You are not authorized to delete this workspace"
+      );
+    }
+    const user = await UserModel.findById(userId).session(session);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    await ProjectModel.deleteMany({ workspace: workspace._id }).session(
+      session
+    );
+
+    await TaskModel.deleteMany({ workspace: workspace._id }).session(session);
+
+    await MemberModel.deleteMany({ workspaceId: workspace._id }).session(
+      session
+    );
+
+    // Update the user's currentWorkspace if it matches the deleted workspace
+    if (user?.currentWorkspace?.equals(workspaceId)) {
+      const memberWorkspace = await MemberModel.findOne({ userId }).session(
+        session
+      );
+
+      // Update the user's currentworkspace
+
+      user.currentWorkspace = memberWorkspace
+        ? memberWorkspace.workspaceId
+        : null;
+
+      await user.save({ session });
+    }
+
+    await workspace.deleteOne({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      currentWorkspace: user.currentWorkspace,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
