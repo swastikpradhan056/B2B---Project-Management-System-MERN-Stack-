@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createTaskController,
+  getAllTaskController,
   updateTaskController,
 } from "../controllers/task.controller";
 
@@ -14,5 +15,7 @@ taskRoutes.put(
   "/:id/project/:projectId/workspace/:workspaceId/update",
   updateTaskController
 );
+
+taskRoutes.get("/workspace/:workspaceId/all", getAllTaskController);
 
 export default taskRoutes;
