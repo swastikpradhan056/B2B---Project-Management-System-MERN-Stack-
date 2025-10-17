@@ -12,7 +12,9 @@ import { roleGuard } from "../utils/roleGuard";
 import { Permissions } from "../enums/role.enum";
 import {
   createTaskService,
+  deleteTaskService,
   getAllTasksService,
+  getTaskByIdService,
   updateTaskService,
 } from "../services/task.service";
 import { HTTPSTATUS } from "../config/http.config";
@@ -110,6 +112,48 @@ export const getAllTaskController = asyncHandler(
     return res.status(HTTPSTATUS.OK).json({
       message: "All tasks fetched successfully",
       ...result,
+    });
+  }
+);
+
+/* The `getTaskByIdController` function is a controller function that handles the retrieval of a
+specific task by its ID. Here's a breakdown of what the code is doing: */
+export const getTaskByIdController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    const taskId = taskIdSchema.parse(req.params.id);
+    const projectId = projectIdSchema.parse(req.params.projectId);
+    const workspaceId = workspaceIdSchema.parse(req.params.workspaceId);
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+    roleGuard(role, [Permissions.VIEW_ONLY]);
+
+    const task = await getTaskByIdService(workspaceId, projectId, taskId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Task fetched successfully",
+      task,
+    });
+  }
+);
+
+/* The `deleteTaskController` function is a controller function that handles the deletion of a task.
+Here's a breakdown of what the code is doing: */
+export const deleteTaskController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    const taskId = taskIdSchema.parse(req.params.id);
+    const workspaceId = workspaceIdSchema.parse(req.params.workspaceId);
+
+    const { role } = await getMemberRoleInWorkspace(userId, workspaceId);
+    roleGuard(role, [Permissions.DELETE_TASK]);
+
+    await deleteTaskService(workspaceId, taskId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Task deleted successfully",
     });
   }
 );

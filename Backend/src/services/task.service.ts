@@ -195,7 +195,7 @@ export const getAllTasksService = async (
   const skip = (pageNumber - 1) * pageSize;
 
   const [tasks, totalCount] = await Promise.all([
-    TaskModel.findById(query)
+    TaskModel.find(query)
       .skip(skip)
       .limit(pageSize)
       .sort({ createdAt: -1 })
@@ -217,4 +217,75 @@ export const getAllTasksService = async (
       skip,
     },
   };
+};
+
+/**
+ * The function `getTaskByIdService` retrieves a task by its ID within a specific workspace and
+ * project, handling error cases appropriately.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace to which the task belongs.
+ * @param {string} projectId - The `projectId` parameter in the `getTaskByIdService` function
+ * represents the unique identifier of the project to which the task belongs. It is used to query the
+ * database for the project associated with the provided `projectId` to ensure that the task being
+ * retrieved belongs to the correct project within the specified workspace
+ * @param {string} taskId - The `taskId` parameter in the `getTaskByIdService` function represents the
+ * unique identifier of the task you want to retrieve. It is used to query the database for a specific
+ * task based on its ID within the given workspace and project.
+ * @returns The `getTaskByIdService` function returns the task object that matches the provided
+ * `taskId`, `workspaceId`, and `projectId`. The task object is populated with the `assignedTo` field,
+ * which includes the `_id`, `name`, and `profilePicture` properties of the user assigned to the task
+ * (excluding the `password` field).
+ */
+export const getTaskByIdService = async (
+  workspaceId: string,
+  projectId: string,
+  taskId: string
+) => {
+  const project = await ProjectModel.findById(projectId);
+
+  if (!project || project.workspace.toString() !== workspaceId.toString()) {
+    throw new NotFoundException(
+      "Project not found or does not belong to this workspace"
+    );
+  }
+
+  const task = await TaskModel.findOne({
+    _id: taskId,
+    workspace: workspaceId,
+    project: projectId,
+  }).populate("assignedTo", "_id name profilePicture -password");
+
+  if (!task) {
+    throw new Error("Task not found");
+  }
+
+  return task;
+};
+
+/**
+ * The function `deleteTaskService` deletes a task based on its ID within a specified workspace in
+ * TypeScript.
+ * @param {string} workspaceId - The `workspaceId` parameter is a string that represents the unique
+ * identifier of the workspace to which the task belongs.
+ * @param {string} taskId - The `taskId` parameter in the `deleteTaskService` function is the unique
+ * identifier of the task that needs to be deleted. It is used to find and delete the task from the
+ * database.
+ * @returns The `deleteTaskService` function is returning nothing (`undefined`).
+ */
+export const deleteTaskService = async (
+  workspaceId: string,
+  taskId: string
+) => {
+  const task = await TaskModel.findOneAndDelete({
+    _id: taskId,
+    workspace: workspaceId,
+  });
+
+  if (!task) {
+    throw new NotFoundException(
+      "Task not found or does not belong to the specified workspace"
+    );
+  }
+
+  return;
 };
